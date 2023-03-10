@@ -28,3 +28,8 @@ fairness_influence_functions/data/model/*
 fairness_influence_functions/data/output/*
 thesis_result*/*
 _fairness_dataset/*
+*.egg-info/*
+.vscode/*
+*/__pycache__/*
+build/*
+dist/*

@@ -1,13 +1,13 @@
 from argparse import ArgumentError
 from itertools import product
-from fairness_influence_functions.src import hdmr
+from fairxplainer import hdmr
 from scipy.stats import norm, binom
 import pandas as pd
 import math
 import numpy as np
 import multiprocessing
 # from copy import deepcopy
-from fairness_influence_functions.src.backfitting import KernelSmoothing
+from fairxplainer.backfitting import KernelSmoothing
 import random
 
 

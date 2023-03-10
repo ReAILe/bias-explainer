@@ -1,10 +1,9 @@
 
 # wrapper for logistic regression
-from pysat.pb import *
 from sklearn.model_selection import KFold
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
-import justicia.utils as utils
+from fairxplainer import utils
 import os
 import pickle
 import random

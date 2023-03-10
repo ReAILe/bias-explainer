@@ -1,7 +1,7 @@
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 import os
-from justicia import utils
+from fairxplainer import utils
 
 class Compas():
 

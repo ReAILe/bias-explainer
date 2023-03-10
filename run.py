@@ -1,4 +1,4 @@
-from fairness_influence_functions.wrapper import decision_tree_wrap, linear_classifier_wrap, mlp_wrap, mlic_wrap
+from fairxplainer.wrapper import decision_tree_wrap, linear_classifier_wrap, mlp_wrap
 from data.objects.communities import Communities_and_Crimes
 from data.objects.bank import Bank
 from data.objects.compas import Compas
@@ -11,15 +11,12 @@ import os
 from scipy.stats.stats import pearsonr
 import pandas as pd
 import numpy as np
-from tqdm import tqdm
 import argparse
-import pickle
-from functools import reduce
 from time import time
-from fairness_influence_functions.src.fair_explainer import FairXplainer
-from fairness_influence_functions.src.backfitting import KernelSmoothing
-from fairness_influence_functions.src.fair_explainer import plot as fif_plot
-from fairness_influence_functions.wrapper.shap_fairness_explanation import ShapExplanation, row_masking_based_on_sensitive_groups
+from fairxplainer.fair_explainer import FairXplainer
+from fairxplainer.backfitting import KernelSmoothing
+from fairxplainer.fair_explainer import plot as fif_plot
+from fairxplainer.wrapper.shap_fairness_explanation import ShapExplanation, row_masking_based_on_sensitive_groups
 
 
 
@@ -140,9 +137,9 @@ for idx, combination in enumerate(combinations):
             model, data_train, data_test, sensitive_attributes, y_train, y_test = decision_tree_wrap.init(
                 datasetObj, repaired=False, verbose=False, compute_equalized_odds=True, depth=depth)
 
-        if(model_name == "CNF"):
-            model, data_train, data_test, sensitive_attributes, y_train, y_test = mlic_wrap.init(
-                datasetObj, repaired=False, verbose=False, compute_equalized_odds=True, thread=args.thread)
+        # if(model_name == "CNF"):
+        #     model, data_train, data_test, sensitive_attributes, y_train, y_test = mlic_wrap.init(
+        #         datasetObj, repaired=False, verbose=False, compute_equalized_odds=True, thread=args.thread)
 
         end_time_preprocessing = time()
 

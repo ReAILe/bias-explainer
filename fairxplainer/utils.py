@@ -381,3 +381,84 @@ def compute_pearson_correlation(X, clf, fairXplainer):
 
     
     return pearsonr(synthetic_truth, fif)
+
+
+
+"""
+    Code source: https://github.com/meelgroup/justicia
+"""
+from feature_engine import discretisers as dsc
+def get_discretized_df(data, columns_to_discretize=None, verbose=False):
+    """ 
+    returns train_test_splitted and discretized df
+    """
+
+    if(columns_to_discretize is None):
+        columns_to_discretize = data.columns.to_list()
+
+    if(verbose):
+        print("Applying discretization\nAttribute bins")
+    for variable in columns_to_discretize:
+        bins = min(4, len(data[variable].unique()))
+        if(verbose):
+            print(variable, bins)
+
+        # set up the discretisation transformer
+        disc = dsc.EqualWidthDiscretiser(bins=bins, variables=[variable])
+
+        # fit the transformer
+        disc.fit(data)
+
+        if(verbose):
+            print(disc.binner_dict_)
+
+        # transform the data
+        data = disc.transform(data)
+        if(verbose):
+            print(data[variable].unique())
+
+    return data
+
+def get_one_hot_encoded_df(df, columns_to_one_hot, verbose=False):
+    """  
+    Apply one-hot encoding on categircal df and return the df
+    """
+    if(verbose):
+        print("\n\nApply one-hot encoding on categircal attributes")
+    for column in columns_to_one_hot:
+        if(column not in df.columns.to_list()):
+            if(verbose):
+                print(column, " is not considered in classification")
+            continue
+
+        # Apply when there are more than two categories or the binary categories are string objects.
+        unique_categories = df[column].unique()
+        if(len(unique_categories) > 2):
+            one_hot = pd.get_dummies(df[column])
+            if(verbose):
+                print(column, " has more than two unique categories",
+                      one_hot.columns.to_list())
+
+            if(len(one_hot.columns) > 1):
+                one_hot.columns = [column + "_" +
+                                   str(c) for c in one_hot.columns]
+            else:
+                one_hot.columns = [column for c in one_hot.columns]
+            df = df.drop(column, axis=1)
+            df = df.join(one_hot)
+        else:
+            # print(column, unique_categories)
+            if(0 in unique_categories and 1 in unique_categories):
+                if(verbose):
+                    print(column, " has categories 1 and 0")
+
+                continue
+            df[column] = df[column].map(
+                {unique_categories[0]: 0, unique_categories[1]: 1})
+            if(verbose):
+                print("Applying following mapping on attribute", column, "=>",
+                      unique_categories[0], ":",  0, "|", unique_categories[1], ":", 1)
+    if(verbose):
+        print("\n")
+    return df
+

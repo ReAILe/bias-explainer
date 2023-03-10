@@ -1,6 +1,9 @@
-import pandas as pd  # type: ignore
-# from SALib_master.plotting.bar import plot as barplot
+"""
+    Code source: https://github.com/SALib/SALib
+"""
 
+
+import pandas as pd 
 # magic string indicating DF columns holding conf bound values
 CONF_COLUMN = '_conf'
 def varplot(Si_df, ax=None):

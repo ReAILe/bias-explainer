@@ -1,6 +1,6 @@
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
-from justicia import utils
+from fairxplainer import utils
 import numpy as np
 from itertools import permutations, combinations
 import os

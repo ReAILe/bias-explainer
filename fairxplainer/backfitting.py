@@ -1,12 +1,11 @@
 from sklearn.linear_model import LinearRegression
 from itertools import combinations
-# from sklearn.linear_model import Ridge, Lasso, ElasticNet
 from sklearn.kernel_ridge import KernelRidge
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from fairness_influence_functions.src import utils
-from typing import Dict, List
+from fairxplainer import utils
+from typing import Dict
 
 
 class KernelSmoothing():

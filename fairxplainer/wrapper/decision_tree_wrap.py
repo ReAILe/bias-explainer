@@ -7,7 +7,7 @@ from sklearn import tree
 from sklearn.tree import _tree
 from sklearn.model_selection import KFold
 from sklearn import metrics
-import justicia.utils as utils
+from fairxplainer import utils
 import os
 import pickle
 

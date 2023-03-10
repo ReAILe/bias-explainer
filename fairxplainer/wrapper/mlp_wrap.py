@@ -1,6 +1,6 @@
 from sklearn.neural_network import MLPClassifier
 from sklearn.model_selection import  KFold
-import justicia.utils as utils
+from fairxplainer import utils
 import os
 import pickle
 import random

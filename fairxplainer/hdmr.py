@@ -1,3 +1,7 @@
+"""
+    Code source: https://github.com/SALib/SALib
+"""
+
 from typing import Dict
 from types import MethodType
 import itertools
@@ -6,7 +10,7 @@ import numpy as np
 from numpy import identity
 import pandas as pd
 from scipy import (stats, special, interpolate)
-from fairness_influence_functions.src.salib_util.results import ResultDict
+from fairxplainer.salib_util.results import ResultDict
 from matplotlib import pyplot as plt
 
 
