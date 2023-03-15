@@ -4,6 +4,8 @@ A Python package for explaining bias in machine learning models based on global 
 ## Install
 `pip install fairxplainer`
 
+Other supported libraries can be installed using `pip install -r requirements.txt`.
+
 ## Usage
 See Python notebook in this [folder](doc/).
 

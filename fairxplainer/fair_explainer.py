@@ -29,90 +29,10 @@ class FairXplainer():
             if ("/" in column):
                 self.dataset = self.dataset.rename(
                     {column: column.replace("/", " Or ")}, axis=1)  # "/" is used to show intersectional effects and hence reserved
-
-    def _compute_statistical_parity(self, X, y, all_assignments):
-        """
-            Provided a feature matrix X and prediction Y, this code computes the probability of positive prediction
-            of the classifier for all possible assignments of sensitive groups in X
-        """
-        assert "target" not in self.dataset.columns  # "target" is the name of class label in pandas
-        assert len(all_assignments) > 0  # there is non-zero sensitive groups
-
-        df = pd.DataFrame(np.column_stack((X, y)), columns=list(
-            self.dataset.columns) + ['target'])
-
-        """
-            self.positive_prediction_probabilities is a dict where the key is a sensitive group and the value is a tuple. 
-            In the tuple, the first value is the positive_prediction_probability and the second value is the sample weight of each sensitive group.
-        """
-        self.positive_prediction_probabilities = {}  # contains result
-        for sensitive_features_assignment in all_assignments:
-            mask = (True)
-            for i in range(len(self.sensitive_features)):
-                mask = mask & (df[self.sensitive_features[i]]
-                               == sensitive_features_assignment[i])
-            conditioned_df = df[mask]
-            self.positive_prediction_probabilities[(", ").join([str(a) + " = " + str(b) for a, b in zip(self.sensitive_features, sensitive_features_assignment)])
-                                                   ] = (conditioned_df['target'].mean(), conditioned_df.shape[0] / df.shape[0])
-
-    """
-        Computes probability distribution, which is fed to SaLib library
-    """
-
-    def _get_bounds_conditioned(self, sensitive_features_assignment, apply_filtering=True, compute_sp=True, apply_kde=True):
-        """
-            This code construct a conditioned dataset based on an assignment to the sensitive features.
-            For each conditioned dataset, it computes the probability distribution of individual features.
-        """
-        conditioned_df = None
-        conditioned_Y = None
-        if (apply_filtering):
-            mask = (True)
-            for i in range(len(self.sensitive_features)):
-                mask = mask & (
-                    self.dataset[self.sensitive_features[i]] == sensitive_features_assignment[i])
-            conditioned_df = self.dataset[mask]
-            if (self.Y_ground_truth is not None):
-                conditioned_Y = self.Y_ground_truth[mask].values
-        else:
-            conditioned_df = self.dataset
-            if (self.Y_ground_truth is not None):
-                conditioned_Y = self.Y_ground_truth.values
-
-        dists = []  # name of the distribution
-        bounds = []  # parameter of the distribution
-        for column in conditioned_df.columns:
-            if (len(conditioned_df[column].unique()) <= 2):
-                dists.append("bernoulli")
-                p = conditioned_df[column].mean()
-                bounds.append([p, None])
-            else:
-                # apply_kde = False
-                if (apply_kde):
-                    # univariate kde
-                    dists.append("kde")
-                    bounds.append([conditioned_df[column].values, None])
-                else:
-                    dists.append("norm")
-                    mu, std = norm.fit(conditioned_df[column].values)
-                    bounds.append([mu, std])
-
-        assert len(dists) == len(bounds)
-        if (conditioned_df.shape[0] > 0):
-
-            # computes the probability of positive prediction of the conditioned dataset
-            if (compute_sp):
-                return True, dists, bounds, self.classifier.predict(conditioned_df.values).mean(), conditioned_df.values, conditioned_Y
-
-            return True, dists, bounds, None, conditioned_df.values, conditioned_Y
-        else:
-            if (compute_sp):
-                return False, None, None, None, None, None
-
-            return False, None, None, None, None, None
-
-    def compute(self, approach="hdmr", compute_sp_only=False, maxorder=2,
-                lambax=0.01, spline_intervals=2, explain_sufficiency_fairness=False,
+                
+    def compute(self, maxorder=2, lambax=0.01, spline_intervals=2, explain_sufficiency_fairness=False,
+                approach="hdmr", # options: {hdmr, kernel}. hdmr is computationally efficient.
+                compute_sp_only=False,
                 verbose=False, seed=22, cpu_time=300):
         """
             This code computes the variance of individual and intersectional features, the sum of which 
@@ -120,24 +40,20 @@ class FairXplainer():
             Variance computation is grouped by each sensitive group
         """
 
-        # contains the PPV for a sensitive group
-        self.group_specific_positive_prediction_probabilities = {}
-        # contains the PPV for a sensitive group computed on the original dataset
-        self.group_specific_positive_prediction_probabilities_on_dataset = {}
+        
+        self.group_specific_positive_prediction_probabilities = {} # contains the probability of positive prediction of the classifier for a sensitive group
+        self.group_specific_positive_prediction_probabilities_on_dataset = {} # contains the probability of positive prediction of the classifier for a sensitive group computed on the original dataset
         self.sensitive_groups = []
-        # contains the total variance for a sensitive group
-        self.group_specific_variance = {}
-        # contains the set of sensitive features in the dataset
-        sensitive_features_in_data = []
+        self.group_specific_variance = {} # contains the total variance for a sensitive group
+        sensitive_features_in_data = [] # contains the set of sensitive features in the dataset
         unique_sensitive_values = []
         idx_sensitive_feature_by_group = []
 
         """
             In our formulation, we consider multiple (categorical) sensitive features. Each feature can have more than two unique values. 
-            Since a categorical features with more than two values are one-hot encoded during training, we require to process them here. 
+            Since categorical features with more than two values are one-hot encoded during training, we require to process them here. 
             In particular we assume a specific design pattern in this context. Let "Race" be a sensitive feature, which takes three values: Black, 
-            White, and Colored. We assume the provided dataset has three columns, named as Race_Black, Race_White, and Race_Colored.
-
+            White, and Colored. We assume the provided dataset has three columns, named as Race_Black, Race_White, and Race_Colored, each separated by underscore "_".
 
             The following code computes the unique values of each sensitive feature. Also, in case of more than two values for a sensitive feature, 
             we cluster indices of corresponding one-hot encoded features. 
@@ -179,7 +95,7 @@ class FairXplainer():
 
         for idx, assignment in enumerate(list(product(*unique_sensitive_values))):
 
-            # an invalid assignment is where at least two values of a sensitive feature is true for a multi-valued sensitive feature
+            # an invalid assignment is where at least two values of a sensitive feature is true for a categorical sensitive feature with more than 2 values
             invalid_assignment = False
             for cluster in idx_sensitive_feature_by_group:
                 s = 0
@@ -190,7 +106,8 @@ class FairXplainer():
                     continue
             if (invalid_assignment):
                 continue
-
+            
+            # get statistics for the current assignment of sensitive features
             flag, dists, bounds, positive_prediction_probability, samples, Y_ground_truth = self._get_bounds_conditioned(
                 assignment, apply_filtering=True)
 
@@ -204,6 +121,7 @@ class FairXplainer():
             if (not flag):
                 continue
 
+            # rewrite in pretty format
             self.sensitive_groups.append((", ").join(
                 [str(a) + " = " + str(b) for a, b in zip(self.sensitive_features, assignment)]))
             self.group_specific_positive_prediction_probabilities_on_dataset[
@@ -227,7 +145,6 @@ class FairXplainer():
                     all_samples = np.concatenate((all_samples, samples))
 
             # Model prediction
-
             if (approach in ["hdmr", "kernel"] and explain_sufficiency_fairness):
                 assert self.Y_ground_truth is not None
                 Y = Y_ground_truth
@@ -265,6 +182,7 @@ class FairXplainer():
             return
 
         for idx, assignment in enumerate(all_valid_assignments):
+            # enumerate for the most and least favorable sensitive groups
 
             if (self._max_positive_prediction_probability_index != self._min_positive_prediction_probability_index and idx not in [self._max_positive_prediction_probability_index, self._min_positive_prediction_probability_index]):
                 if (verbose > 1):
@@ -287,7 +205,7 @@ class FairXplainer():
 
                 if (approach == "hdmr"):
 
-                    # # For hdmr approach, repeat samples to achieve min sample requirement of 300
+                    # For hdmr approach, repeat samples to achieve min sample requirement of 300
                     if (samples.shape[0] < 300 and approach == "hdmr"):
                         """
                             This is not an ideal approach to repeat the dataset to meet min sample requirement
@@ -374,8 +292,7 @@ class FairXplainer():
                 result_current['sensitive group'] = [
                     self.sensitive_groups[idx]]*result_current.shape[0]
                 if (approach == "hdmr"):
-                    # self._auxiliary_info['decomposed_Y'][self.sensitive_groups[idx]
-                    #                                      ] = Y_estimated_decomposed
+                    # self._auxiliary_info['decomposed_Y'][self.sensitive_groups[idx]] = Y_estimated_decomposed
                     self._auxiliary_info['decomposed_Y'][self.sensitive_groups[idx]] = None
                     self._auxiliary_info['rmse'][self.sensitive_groups[idx]] = rmse
                     self._auxiliary_info['Y'][self.sensitive_groups[idx]] = Y
@@ -390,6 +307,11 @@ class FairXplainer():
 
     def get_weights(self):
 
+        """
+            Returns the weights of the features. This is called after compute() is called.
+            Only shows first order influences. Second and higher order influences are summed up.
+        """
+
         result = {}
 
         if (self.is_degenerate_case):
@@ -406,20 +328,23 @@ class FairXplainer():
         first_order_effect_sum = 0
         for feature in self.result[self.result['VarTotal'].notnull()]['names'].unique():
 
+            # get variance of majority group
             weight_majority_group = self.result[(self.result['sensitive group'] == self.sensitive_groups[self._max_positive_prediction_probability_index]) & (
                 self.result['names'] == feature)]['Var1'].item()
+            
+            # scaling weight by the probability of the majority group
             weight_majority_group /= (
                 1 - self.group_specific_positive_prediction_probabilities[self.sensitive_groups[self._max_positive_prediction_probability_index]])
 
+            # get variance of minority group
             weight_minority_group = self.result[(self.result['sensitive group'] == self.sensitive_groups[self._min_positive_prediction_probability_index]) & (
                 self.result['names'] == feature)]['Var1'].item()
+            
+            # scaling weight by the probability of the minority group
             weight_minority_group /= (
                 1 - self.group_specific_positive_prediction_probabilities[self.sensitive_groups[self._min_positive_prediction_probability_index]])
-
-            if (self._all_positive_prediction_probabilities[self._max_positive_prediction_probability_index] == 1):
-                result[feature] = - weight_minority_group
-            else:
-                result[feature] = weight_majority_group - weight_minority_group
+          
+            result[feature] = weight_majority_group - weight_minority_group
 
             first_order_effect_sum += result[feature]
 
@@ -429,23 +354,23 @@ class FairXplainer():
         if ('Var2' in self.result.columns):
             for feature_subset in self.result[self.result['Var2'].notnull()]['names'].unique():
 
+                # get variance of majority group
                 weight_majority_group = self.result[(self.result['sensitive group'] == self.sensitive_groups[self._max_positive_prediction_probability_index]) & (
                     self.result['names'] == feature_subset)]['Var2'].item()
+                
+                # scaling weight by the probability of the majority group
                 weight_majority_group /= (
                     1 - self.group_specific_positive_prediction_probabilities[self.sensitive_groups[self._max_positive_prediction_probability_index]])
 
+                # get variance of minority group
                 weight_minority_group = self.result[(self.result['sensitive group'] == self.sensitive_groups[self._min_positive_prediction_probability_index]) & (
                     self.result['names'] == feature_subset)]['Var2'].item()
+                
+                # scaling weight by the probability of the minority group
                 weight_minority_group /= (
                     1 - self.group_specific_positive_prediction_probabilities[self.sensitive_groups[self._min_positive_prediction_probability_index]])
 
-                if (self._all_positive_prediction_probabilities[self._max_positive_prediction_probability_index] == 1):
-                    second_order_effect_sum += - weight_minority_group
-                else:
-                    second_order_effect_sum += weight_majority_group - weight_minority_group
-
-        if (self._all_positive_prediction_probabilities[self._max_positive_prediction_probability_index] == 1):
-            result[r'$ \Pr[\widehat{Y} = 1 \mid \mathbf{A} = \mathbf{a}^{\max} ]$'] = 1
+                second_order_effect_sum += weight_majority_group - weight_minority_group
 
         result = pd.DataFrame(result.values(), columns=[
                               'weight'], index=result.keys())
@@ -456,6 +381,10 @@ class FairXplainer():
 
     def get_top_k_weights(self, k=None):
 
+        """
+            Returns the top k weights of the features. This is called after compute() is called.
+        """
+
         result = {}
 
         if (self.is_degenerate_case):
@@ -472,20 +401,23 @@ class FairXplainer():
         first_order_effect_sum = 0
         for feature in self.result[self.result['VarTotal'].notnull()]['names'].unique():
 
+            # get variance of majority group
             weight_majority_group = self.result[(self.result['sensitive group'] == self.sensitive_groups[self._max_positive_prediction_probability_index]) & (
                 self.result['names'] == feature)]['Var1'].item()
+            
+            # scaling the weight by the probability of the majority group
             weight_majority_group /= (
                 1 - self.group_specific_positive_prediction_probabilities[self.sensitive_groups[self._max_positive_prediction_probability_index]])
 
+            # get variance of minority group
             weight_minority_group = self.result[(self.result['sensitive group'] == self.sensitive_groups[self._min_positive_prediction_probability_index]) & (
                 self.result['names'] == feature)]['Var1'].item()
+            
+            # scaling the weight by the probability of the minority group
             weight_minority_group /= (
                 1 - self.group_specific_positive_prediction_probabilities[self.sensitive_groups[self._min_positive_prediction_probability_index]])
 
-            if (self._all_positive_prediction_probabilities[self._max_positive_prediction_probability_index] == 1):
-                result[feature] = - weight_minority_group
-            else:
-                result[feature] = weight_majority_group - weight_minority_group
+            result[feature] = weight_majority_group - weight_minority_group
 
             first_order_effect_sum += result[feature]
 
@@ -495,26 +427,26 @@ class FairXplainer():
             for feature_subset in self.result[self.result['Var2'].notnull()]['names'].unique():
                 assert feature_subset not in result
 
+                # get variance of majority group
                 weight_majority_group = self.result[(self.result['sensitive group'] == self.sensitive_groups[self._max_positive_prediction_probability_index]) & (
                     self.result['names'] == feature_subset)]['Var2'].item()
+                
+                # scaling the weight by the probability of the majority group
                 weight_majority_group /= (
                     1 - self.group_specific_positive_prediction_probabilities[self.sensitive_groups[self._max_positive_prediction_probability_index]])
 
+                # get variance of minority group
                 weight_minority_group = self.result[(self.result['sensitive group'] == self.sensitive_groups[self._min_positive_prediction_probability_index]) & (
                     self.result['names'] == feature_subset)]['Var2'].item()
+                
+                # scaling the weight by the probability of the minority group
                 weight_minority_group /= (
                     1 - self.group_specific_positive_prediction_probabilities[self.sensitive_groups[self._min_positive_prediction_probability_index]])
 
-                if (self._all_positive_prediction_probabilities[self._max_positive_prediction_probability_index] == 1):
-                    result[feature_subset] = - weight_minority_group
-                else:
-                    result[feature_subset] = weight_majority_group - \
-                        weight_minority_group
+                
+                result[feature_subset] = weight_majority_group - weight_minority_group
 
                 second_order_effect_sum += result[feature_subset]
-
-        if (self._all_positive_prediction_probabilities[self._max_positive_prediction_probability_index] == 1):
-            result[r'$ \Pr[\widehat{Y} = 1 \mid \mathbf{A} = \mathbf{a}^{\max} ]$'] = 1
 
         result = pd.DataFrame(result.values(), columns=[
                               'weight'], index=result.keys())
@@ -535,100 +467,90 @@ class FairXplainer():
 
         return result
 
-    def get_top_k_weights_disentangled(self, k=None, verbose=False):
+
+
+    def _compute_statistical_parity(self, X, y, all_assignments):
         """
-            Only applicable in hdmr/kernel methods
+            Provided a feature matrix X and prediction Y, this code computes the probability of positive prediction
+            of the classifier for all possible assignments of sensitive groups in X
         """
-        if ("structural contribution" not in self.result.columns):
-            print("Results not available")
-            return None
+        assert "target" not in self.dataset.columns  # "target" is the name of class label in pandas
+        assert len(all_assignments) > 0  # there is non-zero sensitive groups
 
-        raise NotImplementedError()
+        df = pd.DataFrame(np.column_stack((X, y)), columns=list(
+            self.dataset.columns) + ['target'])
 
-        # if(verbose):
-        #     print("\n\nWarning! S != S_a + S_b\n")
+        """
+            self.positive_prediction_probabilities is a dict where the key is a sensitive group and the value is a tuple. 
+            In the tuple, the first value is the positive_prediction_probability and the second value is the sample weight of each sensitive group.
+        """
+        self.positive_prediction_probabilities = {}  # contains result
+        for sensitive_features_assignment in all_assignments:
+            mask = (True)
+            for i in range(len(self.sensitive_features)):
+                mask = mask & (df[self.sensitive_features[i]]
+                               == sensitive_features_assignment[i])
+            conditioned_df = df[mask]
+            self.positive_prediction_probabilities[(", ").join([str(a) + " = " + str(b) for a, b in zip(self.sensitive_features, sensitive_features_assignment)])
+                                                   ] = (conditioned_df['target'].mean(), conditioned_df.shape[0] / df.shape[0])
 
-        denominator = 1 - self._all_positive_prediction_probabilities[self._max_positive_prediction_probability_index] - \
-            self._all_positive_prediction_probabilities[self._min_positive_prediction_probability_index]
-        if (denominator == 0):
-            denominator = 0.0001
+    
 
-        result_structural_contrib = {}
-        result_correlative_contrib = {}
-        # First order
-        first_order_effect_sum = 0
-        for feature in self.result[self.result['VarTotal'].notnull()]['names'].unique():
-            # Ignore sensitive features
-            if (feature in self.sensitive_features):
-                continue
+    def _get_bounds_conditioned(self, sensitive_features_assignment, apply_filtering=True, compute_sp=True, apply_kde=True):
+        """
+            Computes probability distribution, which is fed to SaLib library
 
-            # structural contribution
-            result_structural_contrib[feature] = self.result[(self.result['sensitive group'] == self.sensitive_groups[self._max_positive_prediction_probability_index]) & (self.result['names'] == feature)]['structural contribution'].item() - \
-                self.result[(self.result['sensitive group'] == self.sensitive_groups[self._min_positive_prediction_probability_index]) & (
-                    self.result['names'] == feature)]['structural contribution'].item()
+            This code construct a conditioned dataset based on an assignment to the sensitive features.
+            For each conditioned dataset, it computes the probability distribution of individual features.
+        """
+        conditioned_df = None
+        conditioned_Y = None
+        if (apply_filtering):
+            mask = (True)
+            for i in range(len(self.sensitive_features)):
+                mask = mask & (
+                    self.dataset[self.sensitive_features[i]] == sensitive_features_assignment[i])
+            conditioned_df = self.dataset[mask]
+            if (self.Y_ground_truth is not None):
+                conditioned_Y = self.Y_ground_truth[mask].values
+        else:
+            conditioned_df = self.dataset
+            if (self.Y_ground_truth is not None):
+                conditioned_Y = self.Y_ground_truth.values
 
-            result_structural_contrib[feature] = float(
-                result_structural_contrib[feature] / (denominator))
-            first_order_effect_sum += result_structural_contrib[feature]
+        dists = []  # name of the distribution
+        bounds = []  # parameter of the distribution
+        for column in conditioned_df.columns:
+            if (len(conditioned_df[column].unique()) <= 2):
+                dists.append("bernoulli")
+                p = conditioned_df[column].mean()
+                bounds.append([p, None])
+            else:
+                # apply_kde = False
+                if (apply_kde):
+                    # univariate kde
+                    dists.append("kde")
+                    bounds.append([conditioned_df[column].values, None])
+                else:
+                    dists.append("norm")
+                    mu, std = norm.fit(conditioned_df[column].values)
+                    bounds.append([mu, std])
 
-            # correlative contribution
-            result_correlative_contrib[feature] = self.result[(self.result['sensitive group'] == self.sensitive_groups[self._max_positive_prediction_probability_index]) & (self.result['names'] == feature)]['correlative contribution'].item() - \
-                self.result[(self.result['sensitive group'] == self.sensitive_groups[self._min_positive_prediction_probability_index]) & (
-                    self.result['names'] == feature)]['correlative contribution'].item()
+        assert len(dists) == len(bounds)
+        if (conditioned_df.shape[0] > 0):
 
-            result_correlative_contrib[feature] = float(
-                result_correlative_contrib[feature] / (denominator))
-            first_order_effect_sum += result_correlative_contrib[feature]
+            # computes the probability of positive prediction of the conditioned dataset
+            if (compute_sp):
+                return True, dists, bounds, self.classifier.predict(conditioned_df.values).mean(), conditioned_df.values, conditioned_Y
 
-        # second order
-        second_order_effect_sum = 0
-        if ('Var2' in self.result.columns):
-            for feature in self.result[self.result['Var2'].notnull()]['names'].unique():
-                assert feature not in result_structural_contrib
-                assert feature not in result_correlative_contrib
+            return True, dists, bounds, None, conditioned_df.values, conditioned_Y
+        else:
+            if (compute_sp):
+                return False, None, None, None, None, None
 
-                # structural contribution
-                result_structural_contrib[feature] = self.result[(self.result['sensitive group'] == self.sensitive_groups[self._max_positive_prediction_probability_index]) & (self.result['names'] == feature)]['structural contribution'].item() - \
-                    self.result[(self.result['sensitive group'] == self.sensitive_groups[self._min_positive_prediction_probability_index]) & (
-                        self.result['names'] == feature)]['structural contribution'].item()
+            return False, None, None, None, None, None
 
-                result_structural_contrib[feature] = float(
-                    result_structural_contrib[feature] / (denominator))
-                second_order_effect_sum += result_structural_contrib[feature]
-
-                # correlative contribution
-                result_correlative_contrib[feature] = self.result[(self.result['sensitive group'] == self.sensitive_groups[self._max_positive_prediction_probability_index]) & (self.result['names'] == feature)]['correlative contribution'].item() - \
-                    self.result[(self.result['sensitive group'] == self.sensitive_groups[self._min_positive_prediction_probability_index]) & (
-                        self.result['names'] == feature)]['correlative contribution'].item()
-
-                result_correlative_contrib[feature] = float(
-                    result_correlative_contrib[feature] / (denominator))
-                second_order_effect_sum += result_correlative_contrib[feature]
-
-        # combine structural and correlative contributions as tuple
-        result = {}
-        for feature in result_structural_contrib:
-            assert feature in result_correlative_contrib
-            result[feature] = (result_structural_contrib[feature], result_correlative_contrib[feature],
-                               result_structural_contrib[feature] + result_correlative_contrib[feature])
-
-        result = pd.DataFrame(result.values(), columns=[
-                              'structural weight', 'correlative weight', 'weight'], index=result.keys())
-
-        result = result.sort_values('weight', ascending=False, key=abs)
-
-        # get top k values
-        if (k is not None):
-            assert k >= 1
-            total_weight = result['weight'].sum().item()
-            result = result.head(k)
-            top_k_weight = result['weight'].sum().item()
-            residual_weight = total_weight - top_k_weight
-
-        result = result.sort_values('weight', ascending=False)
-
-        return result
-
+    
     def statistical_parity_dataset(self, verbose=False):
         self._all_positive_prediction_probabilities_on_dataset = np.array(
             list(self.group_specific_positive_prediction_probabilities_on_dataset.values()))
@@ -638,12 +560,7 @@ class FairXplainer():
             print("="*50)
         return self._all_positive_prediction_probabilities_on_dataset.max() - self._all_positive_prediction_probabilities_on_dataset.min()
 
-    """
-    ==================================================================================================
-    Auxiliary code, used rarely
-    ==================================================================================================
-    """
-
+    
     def statistical_parity_sample(self, verbose=False):
         self._all_positive_prediction_probabilities = np.array(
             list(self.group_specific_positive_prediction_probabilities.values()))
