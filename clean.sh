@@ -13,3 +13,4 @@ rm verifair/python/verifair/main/*temp*
 rm -r .ipynb_checkpoints
 rm data/model.wcnf
 rm data/model_out.txt
+rm -r build dist *.egg-info

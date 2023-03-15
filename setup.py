@@ -13,7 +13,7 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
 setup(
   name = 'fairxplainer',
   packages = ['fairxplainer', 'fairxplainer.salib_util', 'fairxplainer.wrapper'],
-  version = 'v0.1.0',
+  version = 'v0.2.0',
   license='MIT',
   description = 'A Python package for explaining bias in machine learning models',
   long_description=long_description,
@@ -21,7 +21,7 @@ setup(
   author = 'Bishwamittra Ghosh',
   author_email = 'bishwamittra.ghosh@gmail.com',
   url = 'https://github.com/ReAILe/bias-explainer',
-  download_url = 'https://github.com/ReAILe/bias-explainer/archive/v0.1.0.tar.gz',
+  download_url = 'https://github.com/ReAILe/bias-explainer/archive/v0.2.0.tar.gz',
   keywords = ['Fair Machine Learning', 'Bias', 'Explainability', 'Global Sensitivity Analysis', 'Variance Decomposition', 'Influence Functions'],   # Keywords that define your package best
   # install_requires=required,
   classifiers=[
