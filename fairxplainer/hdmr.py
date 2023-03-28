@@ -164,9 +164,9 @@ def _check_settings(X, Y, maxorder, maxiter, m, K, R, alpha, lambdax):
     if d == 1:
         raise RuntimeError(
             "Matrix X contains only a single column: No point to do sensitivity analysis when d = 1.")
-    if N < 300:
-        raise RuntimeError(
-            f"Number of samples in matrix X, {N}, is insufficient. Need at least 300.")
+    # if N < 300:
+    #     raise RuntimeError(
+    #         f"Number of samples in matrix X, {N}, is insufficient. Need at least 300.")
     if N != y_row:
         raise RuntimeError(
             f"Dimension mismatch. The number of outputs ({y_row}) should match number of samples ({N})")

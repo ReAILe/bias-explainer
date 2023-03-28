@@ -109,7 +109,7 @@ class FairXplainer():
             
             # get statistics for the current assignment of sensitive features
             flag, dists, bounds, positive_prediction_probability, samples, Y_ground_truth = self._get_bounds_conditioned(
-                assignment, apply_filtering=True)
+                assignment, apply_filtering=True, compute_sp=compute_sp_only)
 
             # rewriting positive prediction probability on a dataset
             if (explain_sufficiency_fairness):
@@ -206,15 +206,15 @@ class FairXplainer():
                 if (approach == "hdmr"):
 
                     # For hdmr approach, repeat samples to achieve min sample requirement of 300
-                    if (samples.shape[0] < 300 and approach == "hdmr"):
-                        """
-                            This is not an ideal approach to repeat the dataset to meet min sample requirement
-                        """
-                        assert samples.shape[0] == Y.shape[0]
-                        num_repeat = int(math.ceil(300.0 / samples.shape[0]))
-                        samples = np.repeat(
-                            samples, [num_repeat] * samples.shape[0], axis=0)
-                        Y = np.repeat(Y, [num_repeat] * Y.shape[0], axis=0)
+                    # if (samples.shape[0] < 300 and approach == "hdmr"):
+                    #     """
+                    #         This is not an ideal approach to repeat the dataset to meet min sample requirement
+                    #     """
+                    #     assert samples.shape[0] == Y.shape[0]
+                    #     num_repeat = int(math.ceil(300.0 / samples.shape[0]))
+                    #     # print(num_repeat, samples.shape[0], [num_repeat] * samples.shape[0])
+                    #     samples = np.repeat(samples, [num_repeat] * samples.shape[0], axis=0)
+                    #     Y = np.repeat(Y, [num_repeat] * Y.shape[0], axis=0)
 
                     if (verbose):
                         print("c sample shape:", samples.shape)
@@ -224,7 +224,7 @@ class FairXplainer():
 
                     qu = multiprocessing.Queue()
                     pr = multiprocessing.get_context("fork").Process(target=hdmr.analyze, args=(
-                        qu, problem, samples, Y, maxorder, 10000, spline_intervals, 1, None, 0.95, lambax, False, seed, ))
+                        qu, problem, samples.values, Y, maxorder, 10000, spline_intervals, 1, None, 0.95, lambax, False, seed, ))
                     pr.daemon = True
                     pr.start()
                     pr.join(timeout=int(cpu_time/2))
@@ -301,9 +301,9 @@ class FairXplainer():
             self.result = self.result.append(
                 result_current, ignore_index=False)
 
-        if (verbose):
-            print()
-            print(self.result)
+        # if (verbose):
+        #     print()
+        #     print(self.result)
 
     def get_weights(self):
 
@@ -541,9 +541,9 @@ class FairXplainer():
 
             # computes the probability of positive prediction of the conditioned dataset
             if (compute_sp):
-                return True, dists, bounds, self.classifier.predict(conditioned_df.values).mean(), conditioned_df.values, conditioned_Y
+                return True, dists, bounds, self.classifier.predict(conditioned_df).mean(), conditioned_df, conditioned_Y
 
-            return True, dists, bounds, None, conditioned_df.values, conditioned_Y
+            return True, dists, bounds, None, conditioned_df, conditioned_Y
         else:
             if (compute_sp):
                 return False, None, None, None, None, None
@@ -577,12 +577,12 @@ For Plotting results in a waterfall diagram
 """
 
 
-def plot(result, draw_waterfall=True, fontsize=22, labelsize=18, figure_size=(10, 7), title="", xlim=None,
-         x_label="Statistical Parity", text_x_pad=0.02, text_y_pad=0.1, result_x_pad=0.02, result_y_location=0.5, delete_zero_weights=False):
+def plot(result, draw_waterfall=True, fontsize=22, labelsize=18, figure_size=(10, 6), title="", xlim=None,
+         x_label="Influence on statistical Parity", text_x_pad=0.02, text_y_pad=0.1, result_x_pad=0.02, result_y_location=0.5, delete_zero_weights=False):
 
     import matplotlib.pyplot as plt
     plt.rcParams["font.family"] = "serif"
-    plt.rcParams['text.usetex'] = True
+    # plt.rcParams['text.usetex'] = True
     plt.rcParams['figure.figsize'] = figure_size
 
     assert "weight" in result.columns
@@ -594,8 +594,10 @@ def plot(result, draw_waterfall=True, fontsize=22, labelsize=18, figure_size=(10
 
     # rename features
     result['feature'] = result.index
-    result['feature'] = result.apply(lambda x: x['feature'].replace("/", " \& ").replace("_", " ") if isinstance(x['feature'], str)
-                                     else (" \& ".join(x['feature']).replace("_", " ") if isinstance(x['feature'], tuple) else None), axis=1)
+    # result['feature'] = result.apply(lambda x: x['feature'].replace("/", " \& ").replace("_", " ") if isinstance(x['feature'], str)
+    #                                  else (" \& ".join(x['feature']).replace("_", " ") if isinstance(x['feature'], tuple) else None), axis=1)
+    result['feature'] = result.apply(lambda x: x['feature'].replace("/", " & ") if isinstance(x['feature'], str)
+                                     else (" & ".join(x['feature']) if isinstance(x['feature'], tuple) else None), axis=1)
     result.index = result['feature']
     del result['feature']
     colormap = result.apply(
