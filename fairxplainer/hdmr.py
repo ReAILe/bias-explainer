@@ -639,14 +639,14 @@ def ancova(Y, Y_em, V_Y, R, n):
     # Analysis of covariance
     for j in range(n):
         # Covariance matrix of jth term of Y_em and actual Y
-        C = np.cov(np.stack((Y_em[:, j], Y.reshape(R,)), axis=0))
+        C = np.cov(np.stack((Y_em[:, j], Y.reshape(R,)), axis=0), bias=True)
 
         # Total sensitivity of jth term         ( = Eq. 19 of Li et al )
         # S[j] = C[0, 1] / V_Y
         S[j] = C[0, 1]
 
         # Covariance matrix of jth term with emulator Y without jth term
-        C = np.cov(np.stack((Y_em[:, j], Y0 - Y_em[:, j]), axis=0))
+        C = np.cov(np.stack((Y_em[:, j], Y0 - Y_em[:, j]), axis=0), bias=True)
 
         # Structural contribution of jth term   ( = Eq. 20 of Li et al )
         # S_a[j] = C[0, 0] / V_Y

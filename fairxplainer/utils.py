@@ -387,7 +387,7 @@ def compute_pearson_correlation(X, clf, fairXplainer):
 """
     Code source: https://github.com/meelgroup/justicia
 """
-from feature_engine import discretisers as dsc
+from feature_engine.discretisation import EqualWidthDiscretiser as dsc
 def get_discretized_df(data, columns_to_discretize=None, verbose=False):
     """ 
     returns train_test_splitted and discretized df

@@ -13,7 +13,7 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
 setup(
   name = 'fairxplainer',
   packages = ['fairxplainer', 'fairxplainer.salib_util', 'fairxplainer.wrapper'],
-  version = 'v0.3.0',
+  version = 'v0.4.0',
   license='MIT',
   description = 'A Python package for explaining bias in machine learning models',
   long_description=long_description,

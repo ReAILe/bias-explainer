@@ -218,7 +218,7 @@ for idx, combination in enumerate(combinations):
                                         model[i], data[i], sensitive_attributes, verbose=verbose)
                                     fairXplainer.compute(
                                         approach="hdmr", spline_intervals=args.spline_intervals, maxorder=args.maxorder, verbose=verbose)
-                                    entry['exact statistical parity'] = fairXplainer.statistical_parity_dataset(
+                                    entry['exact statistical parity'] = fairXplainer.statistical_parity_sample(
                                         verbose=verbose)
                                     entry['maxorder'] = args.maxorder
                                     if(not fairXplainer.is_degenerate_case):
@@ -332,7 +332,7 @@ for idx, combination in enumerate(combinations):
                                                 k=10)
 
                                             exact_statistical_parity[sample_size].append(
-                                                fairXplainer.statistical_parity_dataset(verbose=verbose))
+                                                fairXplainer.statistical_parity_sample(verbose=verbose))
                                             estimated_statistical_parity[sample_size].append(
                                                 explanation_result.sum().item())
                                             influence_function[sample_size].append(
@@ -388,7 +388,7 @@ for idx, combination in enumerate(combinations):
                                     fairXplainer.compute(
                                         approach="hdmr", spline_intervals=args.spline_intervals, maxorder=args.maxorder, verbose=verbose)
                                     entry['maxorder'] = args.maxorder
-                                    entry['exact eo (y=' + str(y_val) + ")"] = fairXplainer.statistical_parity_dataset(
+                                    entry['exact eo (y=' + str(y_val) + ")"] = fairXplainer.statistical_parity_sample(
                                         verbose=verbose)
 
                                     if(not entry['fairXplainer degenerate case'] and not fairXplainer.is_degenerate_case):
@@ -443,7 +443,7 @@ for idx, combination in enumerate(combinations):
                                     fairXplainer.compute(
                                         approach="hdmr", spline_intervals=args.spline_intervals, maxorder=args.maxorder, verbose=verbose, explain_sufficiency_fairness=True)
                                     entry['maxorder'] = args.maxorder
-                                    entry['exact suff (y=' + str(y_val) + ")"] = fairXplainer.statistical_parity_dataset(
+                                    entry['exact suff (y=' + str(y_val) + ")"] = fairXplainer.statistical_parity_sample(
                                         verbose=verbose)
 
                                     if(not entry['fairXplainer degenerate case'] and not fairXplainer.is_degenerate_case):
@@ -652,7 +652,7 @@ for idx, combination in enumerate(combinations):
                     entry['cv index'] = i
                     result = pd.concat(
                         [result, pd.DataFrame([entry])], ignore_index=True)
-                    # result = result.append(entry, ignore_index=True)
+                    # result = pd.concat([result, pd.DataFrame([entry])], ignore_index=True)
 
                     if(verbose):
                         print(entry['time'])

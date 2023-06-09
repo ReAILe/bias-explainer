@@ -298,8 +298,9 @@ class FairXplainer():
                     self._auxiliary_info['Y'][self.sensitive_groups[idx]] = Y
                     self._auxiliary_info['X'][self.sensitive_groups[idx]] = samples
 
-            self.result = self.result.append(
-                result_current, ignore_index=False)
+            # self.result = self.result.append(
+            #     result_current, ignore_index=False)
+            self.result = pd.concat([self.result, result_current], ignore_index=True)
 
         # if (verbose):
         #     print()
@@ -551,14 +552,14 @@ class FairXplainer():
             return False, None, None, None, None, None
 
     
-    def statistical_parity_dataset(self, verbose=False):
-        self._all_positive_prediction_probabilities_on_dataset = np.array(
-            list(self.group_specific_positive_prediction_probabilities_on_dataset.values()))
-        if (verbose):
-            print("Exact statistical parity:", self._all_positive_prediction_probabilities_on_dataset.max(
-            ) - self._all_positive_prediction_probabilities_on_dataset.min())
-            print("="*50)
-        return self._all_positive_prediction_probabilities_on_dataset.max() - self._all_positive_prediction_probabilities_on_dataset.min()
+    # def statistical_parity_dataset(self, verbose=False):
+    #     self._all_positive_prediction_probabilities_on_dataset = np.array(
+    #         list(self.group_specific_positive_prediction_probabilities_on_dataset.values()))
+    #     if (verbose):
+    #         print("Exact statistical parity:", self._all_positive_prediction_probabilities_on_dataset.max(
+    #         ) - self._all_positive_prediction_probabilities_on_dataset.min())
+    #         print("="*50)
+    #     return self._all_positive_prediction_probabilities_on_dataset.max() - self._all_positive_prediction_probabilities_on_dataset.min()
 
     
     def statistical_parity_sample(self, verbose=False):
