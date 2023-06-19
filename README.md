@@ -1,6 +1,6 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-#Fairness Influence Functions
+# Fairness Influence Functions
 A Python package for explaining bias in machine learning models based on global sensitivity analysis. The repository is based on our [FAccT-2023 paper](https://arxiv.org/pdf/2206.00667.pdf).
 
 ## Install
